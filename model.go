@@ -281,9 +281,8 @@ func (m *model) updateDisplayedCompleted() {
 }
 
 func (m model) View() string {
-	var s strings.Builder
-
-	s.WriteString("\n  📝 TODO LIST\n\n")
+	s := strings.Builder{}
+	s.WriteString("\n")
 
 	if m.currentView == viewInProgress {
 		s.WriteString("  [IN PROGRESS]  Completed (l to switch)\n\n")
