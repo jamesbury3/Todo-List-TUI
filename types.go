@@ -33,5 +33,6 @@ type model struct {
 	newDescription         string
 	showingDescription     bool
 	showingAllDescriptions bool
+	confirmingDelete       bool
 	message                string
 }

@@ -201,32 +201,56 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "d":
+			// Check if there's a todo to delete
 			if m.currentView == viewInProgress {
 				if len(m.inProgress) > 0 && m.cursor < len(m.inProgress) {
-					m.inProgress = append(m.inProgress[:m.cursor], m.inProgress[m.cursor+1:]...)
-					if m.cursor >= len(m.inProgress) && m.cursor > 0 {
-						m.cursor--
-					}
-					saveTodos(inProgressFile, m.inProgress)
-					m.message = "Todo deleted"
+					m.confirmingDelete = true
+					m.message = ""
 				}
 			} else {
 				if len(m.displayedCompleted) > 0 && m.cursor < len(m.displayedCompleted) {
-					// Find and remove from the actual completed list
-					todoToDelete := m.displayedCompleted[m.cursor]
-					for i, todo := range m.completed {
-						if todo.Text == todoToDelete.Text && todo.CreatedAt.Equal(todoToDelete.CreatedAt) {
-							m.completed = append(m.completed[:i], m.completed[i+1:]...)
-							break
-						}
-					}
-					m.updateDisplayedCompleted()
-					if m.cursor >= len(m.displayedCompleted) && m.cursor > 0 {
-						m.cursor--
-					}
-					saveTodos(completedFile, m.completed)
-					m.message = "Todo deleted"
+					m.confirmingDelete = true
+					m.message = ""
 				}
+			}
+
+		case "y":
+			if m.confirmingDelete {
+				// Proceed with deletion
+				if m.currentView == viewInProgress {
+					if len(m.inProgress) > 0 && m.cursor < len(m.inProgress) {
+						m.inProgress = append(m.inProgress[:m.cursor], m.inProgress[m.cursor+1:]...)
+						if m.cursor >= len(m.inProgress) && m.cursor > 0 {
+							m.cursor--
+						}
+						saveTodos(inProgressFile, m.inProgress)
+						m.message = "Todo deleted"
+					}
+				} else {
+					if len(m.displayedCompleted) > 0 && m.cursor < len(m.displayedCompleted) {
+						// Find and remove from the actual completed list
+						todoToDelete := m.displayedCompleted[m.cursor]
+						for i, todo := range m.completed {
+							if todo.Text == todoToDelete.Text && todo.CreatedAt.Equal(todoToDelete.CreatedAt) {
+								m.completed = append(m.completed[:i], m.completed[i+1:]...)
+								break
+							}
+						}
+						m.updateDisplayedCompleted()
+						if m.cursor >= len(m.displayedCompleted) && m.cursor > 0 {
+							m.cursor--
+						}
+						saveTodos(completedFile, m.completed)
+						m.message = "Todo deleted"
+					}
+				}
+				m.confirmingDelete = false
+			}
+
+		case "n":
+			if m.confirmingDelete {
+				m.confirmingDelete = false
+				m.message = "Deletion cancelled"
 			}
 
 		case "x":
@@ -376,6 +400,8 @@ func (m model) View() string {
 	} else if m.editingDescription {
 		s.WriteString("  Edit description: " + m.newDescription + "_\n")
 		s.WriteString("  (press Enter to save, Esc to cancel)\n\n")
+	} else if m.confirmingDelete {
+		s.WriteString("  Are you sure you want to delete this todo? (y/n)\n\n")
 	} else {
 		s.WriteString("  Commands:\n")
 		s.WriteString("  j/k: move down/up  J/K: reorder (in progress only)  h/l: switch views\n")
