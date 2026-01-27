@@ -16,6 +16,7 @@ const (
 
 type Todo struct {
 	Text        string     `json:"text"`
+	Description string     `json:"description,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }
@@ -28,5 +29,8 @@ type model struct {
 	currentView        view
 	adding             bool
 	newTodo            string
+	editingDescription bool
+	newDescription     string
+	showingDescription bool
 	message            string
 }

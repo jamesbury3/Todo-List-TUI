@@ -57,6 +57,47 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		if m.editingDescription {
+			switch msg.String() {
+			case "enter":
+				currentList := m.getCurrentList()
+				if len(currentList) > 0 && m.cursor < len(currentList) {
+					if m.currentView == viewInProgress {
+						m.inProgress[m.cursor].Description = m.newDescription
+						saveTodos(inProgressFile, m.inProgress)
+					} else {
+						// Find and update in completed list
+						todoToUpdate := m.displayedCompleted[m.cursor]
+						for i, todo := range m.completed {
+							if todo.Text == todoToUpdate.Text && todo.CreatedAt.Equal(todoToUpdate.CreatedAt) {
+								m.completed[i].Description = m.newDescription
+								break
+							}
+						}
+						m.updateDisplayedCompleted()
+						saveTodos(completedFile, m.completed)
+					}
+					m.message = "Description updated!"
+					m.showingDescription = true
+				}
+				m.editingDescription = false
+				m.newDescription = ""
+			case "esc":
+				m.editingDescription = false
+				m.newDescription = ""
+				m.message = "Cancelled"
+			case "backspace":
+				if len(m.newDescription) > 0 {
+					m.newDescription = m.newDescription[:len(m.newDescription)-1]
+				}
+			default:
+				if len(msg.String()) == 1 {
+					m.newDescription += msg.String()
+				}
+			}
+			return m, nil
+		}
+
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
@@ -67,12 +108,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 			m.message = ""
+			m.showingDescription = false
 
 		case "k":
 			if m.cursor > 0 {
 				m.cursor--
 			}
 			m.message = ""
+			m.showingDescription = false
 
 		case "J":
 			if m.currentView == viewInProgress && len(m.inProgress) > 0 && m.cursor < len(m.inProgress)-1 {
@@ -97,6 +140,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.currentView = viewInProgress
 				m.cursor = 0
 				m.message = ""
+				m.showingDescription = false
 			}
 
 		case "l":
@@ -105,6 +149,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.updateDisplayedCompleted()
 				m.cursor = 0
 				m.message = ""
+				m.showingDescription = false
 			}
 
 		case "a":
@@ -180,6 +225,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				saveTodos(completedFile, m.completed)
 				m.message = "Todo moved to in-progress!"
 			}
+
+		case "i":
+			currentList := m.getCurrentList()
+			if len(currentList) > 0 && m.cursor < len(currentList) {
+				m.showingDescription = !m.showingDescription
+				m.message = ""
+			}
+
+		case "e":
+			currentList := m.getCurrentList()
+			if len(currentList) > 0 && m.cursor < len(currentList) {
+				m.editingDescription = true
+				m.newDescription = currentList[m.cursor].Description
+				m.message = ""
+			}
 		}
 	}
 
@@ -242,13 +302,24 @@ func (m model) View() string {
 				cursor = ">"
 			}
 
+			// Add description indicator
+			indicator := ""
+			if todo.Description != "" {
+				indicator = " 📄"
+			}
+
 			// Format the display based on view
 			if m.currentView == viewCompleted && todo.CompletedAt != nil {
 				completedTime := todo.CompletedAt.Format("Jan 2, 15:04")
-				s.WriteString(fmt.Sprintf("  %s %s [%s]\n", cursor, todo.Text, completedTime))
+				s.WriteString(fmt.Sprintf("  %s %s%s [%s]\n", cursor, todo.Text, indicator, completedTime))
 			} else {
 				createdTime := todo.CreatedAt.Format("Jan 2, 15:04")
-				s.WriteString(fmt.Sprintf("  %s %s [%s]\n", cursor, todo.Text, createdTime))
+				s.WriteString(fmt.Sprintf("  %s %s%s [%s]\n", cursor, todo.Text, indicator, createdTime))
+			}
+
+			// Show description if toggled and cursor is on this todo
+			if m.showingDescription && i == m.cursor && todo.Description != "" {
+				s.WriteString(fmt.Sprintf("     └─ %s\n", todo.Description))
 			}
 		}
 	}
@@ -258,10 +329,14 @@ func (m model) View() string {
 	if m.adding {
 		s.WriteString("  Add new todo: " + m.newTodo + "_\n")
 		s.WriteString("  (press Enter to save, Esc to cancel)\n\n")
+	} else if m.editingDescription {
+		s.WriteString("  Edit description: " + m.newDescription + "_\n")
+		s.WriteString("  (press Enter to save, Esc to cancel)\n\n")
 	} else {
 		s.WriteString("  Commands:\n")
 		s.WriteString("  j/k: move down/up  J/K: reorder (in progress only)  h/l: switch views\n")
-		s.WriteString("  a: add  d: delete  x: mark complete  u: undo complete  q: quit\n\n")
+		s.WriteString("  a: add  d: delete  x: mark complete  u: undo complete\n")
+		s.WriteString("  i: toggle description  e: edit description  q: quit\n\n")
 	}
 
 	if m.message != "" {
