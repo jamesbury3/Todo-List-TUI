@@ -233,6 +233,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.message = ""
 			}
 
+		case "I":
+			m.showingAllDescriptions = !m.showingAllDescriptions
+			m.message = ""
+
 		case "e":
 			currentList := m.getCurrentList()
 			if len(currentList) > 0 && m.cursor < len(currentList) {
@@ -316,8 +320,8 @@ func (m model) View() string {
 				s.WriteString(fmt.Sprintf("  %s %s%s [%s]\n", cursor, todo.Text, indicator, createdTime))
 			}
 
-			// Show description if toggled and cursor is on this todo
-			if m.showingDescription && i == m.cursor && todo.Description != "" {
+			// Show description if toggled and cursor is on this todo, or if showing all descriptions
+			if todo.Description != "" && ((m.showingDescription && i == m.cursor) || m.showingAllDescriptions) {
 				s.WriteString(fmt.Sprintf("     └─ %s\n", todo.Description))
 			}
 		}
@@ -335,7 +339,7 @@ func (m model) View() string {
 		s.WriteString("  Commands:\n")
 		s.WriteString("  j/k: move down/up  J/K: reorder (in progress only)  h/l: switch views\n")
 		s.WriteString("  a: add  d: delete  x: mark complete  u: undo complete\n")
-		s.WriteString("  i: toggle description  e: edit description  q: quit\n\n")
+		s.WriteString("  i: toggle description  I: toggle all descriptions  e: edit description  q: quit\n\n")
 	}
 
 	if m.message != "" {

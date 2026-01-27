@@ -22,15 +22,16 @@ type Todo struct {
 }
 
 type model struct {
-	inProgress         []Todo
-	completed          []Todo
-	displayedCompleted []Todo // Stores the filtered/sorted completed todos for display
-	cursor             int
-	currentView        view
-	adding             bool
-	newTodo            string
-	editingDescription bool
-	newDescription     string
-	showingDescription bool
-	message            string
+	inProgress             []Todo
+	completed              []Todo
+	displayedCompleted     []Todo // Stores the filtered/sorted completed todos for display
+	cursor                 int
+	currentView            view
+	adding                 bool
+	newTodo                string
+	editingDescription     bool
+	newDescription         string
+	showingDescription     bool
+	showingAllDescriptions bool
+	message                string
 }
