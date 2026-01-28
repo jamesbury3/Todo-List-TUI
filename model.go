@@ -523,6 +523,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textInputCursor = len([]rune(m.newDescription))
 				m.message = ""
 			}
+
+		case "?":
+			m.showingCommands = !m.showingCommands
+			m.message = ""
 		}
 	}
 
@@ -823,7 +827,7 @@ func (m model) View() string {
 		s.WriteString("  " + helpTextStyle.Render("(press Enter to save, Esc to cancel, arrows to navigate)") + "\n\n")
 	} else if m.confirmingDelete {
 		s.WriteString("  " + errorMessageStyle.Render("Are you sure you want to delete this todo? (y/n)") + "\n\n")
-	} else {
+	} else if m.showingCommands {
 		s.WriteString("  " + headerStyle.Render("Commands:") + "\n")
 		s.WriteString("  " + commandStyle.Render("j/k: move down/up  J/K: reorder (backlog/ready)  h/l: switch views") + "\n")
 		if m.currentView == viewCompleted {
@@ -835,7 +839,9 @@ func (m model) View() string {
 		} else {
 			log.Fatalf("Invalid view: %v", m.currentView)
 		}
-		s.WriteString("  " + commandStyle.Render("i: toggle description  I: toggle all descriptions  e: edit description  n: rename  q: quit") + "\n\n")
+		s.WriteString("  " + commandStyle.Render("i: toggle description  I: toggle all descriptions  e: edit description  n: rename  ?: toggle help  q: quit") + "\n\n")
+	} else {
+		s.WriteString("  " + helpTextStyle.Render("Press ? for help") + "\n\n")
 	}
 
 	if m.message != "" {

@@ -38,6 +38,7 @@ type model struct {
 	newTodoName            string
 	showingDescription     bool
 	showingAllDescriptions bool
+	showingCommands        bool
 	confirmingDelete       bool
 	message                string
 	textInputCursor        int // Cursor position within text input fields (for arrow key navigation)
