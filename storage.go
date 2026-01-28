@@ -52,3 +52,17 @@ func saveTodos(filename string, todos []Todo) error {
 	}
 	return writer.Flush()
 }
+
+func backupCompletedTodos(todos []Todo) (string, error) {
+	// Generate backup filename with current date and number of todos
+	now := time.Now()
+	dateStr := now.Format("2006-01-02")
+	filename := fmt.Sprintf("todo_completed_backup_%s_%d.txt", dateStr, len(todos))
+
+	// Save todos to backup file
+	if err := saveTodos(filename, todos); err != nil {
+		return "", err
+	}
+
+	return filename, nil
+}

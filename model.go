@@ -370,6 +370,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.message = "Todo moved to in-progress!"
 			}
 
+		case "b":
+			if m.currentView == viewCompleted && len(m.completed) > 0 {
+				// Backup all completed todos
+				backupFile, err := backupCompletedTodos(m.completed)
+				if err != nil {
+					m.message = "Backup failed: " + err.Error()
+				} else {
+					// Clear the completed list
+					m.completed = []Todo{}
+					m.updateDisplayedCompleted()
+					m.cursor = 0
+					saveTodos(completedFile, m.completed)
+					m.message = fmt.Sprintf("Backed up to %s and cleared completed todos!", backupFile)
+				}
+			}
+
 		case "r":
 			if m.currentView == viewBacklog && len(m.backlog) > 0 && m.cursor < len(m.backlog) {
 				todo := m.backlog[m.cursor]
@@ -507,7 +523,11 @@ func (m model) View() string {
 	} else {
 		s.WriteString("  Commands:\n")
 		s.WriteString("  j/k: move down/up  J/K: reorder (backlog/in progress)  h/l: switch views\n")
-		s.WriteString("  a: add  d: delete  x: mark complete  u: undo complete  r: move to in progress\n")
+		if m.currentView == viewCompleted {
+			s.WriteString("  d: delete  u: undo complete  b: backup and clear completed\n")
+		} else {
+			s.WriteString("  a: add  d: delete  x: mark complete  u: undo complete  r: move to in progress\n")
+		}
 		s.WriteString("  i: toggle description  I: toggle all descriptions  e: edit description  n: rename  q: quit\n\n")
 	}
 
