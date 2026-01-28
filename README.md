@@ -4,7 +4,7 @@
 
 This is a terminal-based todo list application built for keyboard navigation with vim-like commands.
 
-<img width="753" height="269" alt="Screenshot 2026-01-27 at 9 49 25 PM" src="https://github.com/user-attachments/assets/d4341861-fd9c-42ed-ad50-c73b49615bf3" />
+<img width="747" height="247" alt="Screenshot 2026-01-28 at 7 10 19 AM" src="https://github.com/user-attachments/assets/2c54f931-3be5-40e1-8c5c-b2f1f3896c75" />
 
 ### Getting Started
 
@@ -19,7 +19,7 @@ go build .
 
 ### Usage
 
-The todo list is split into 3 pages: Backlog, In Progress, and Completed. Each of these has slightly different commands, but navigation is common throughout.
+The todo list is split into 3 pages: Backlog, Ready, and Completed. Each of these has slightly different commands, but navigation is common throughout.
 
 **Common**
 - `j`/`k` - Navigate down/up
@@ -33,10 +33,10 @@ The todo list is split into 3 pages: Backlog, In Progress, and Completed. Each o
 
 **Backlog**
 - `a` - Add new todo
-- `r` - Move to in progress
+- `r` - Move to ready
 - `J`/`K` - Reorder todos
 
-**In Progress**
+**Ready**
 - `a` - Add new todo
 - `b` - Move to backlog
 - `x` - Mark as complete
