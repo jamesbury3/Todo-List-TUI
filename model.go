@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
@@ -525,8 +526,12 @@ func (m model) View() string {
 		s.WriteString("  j/k: move down/up  J/K: reorder (backlog/in progress)  h/l: switch views\n")
 		if m.currentView == viewCompleted {
 			s.WriteString("  d: delete  u: undo complete  b: backup and clear completed\n")
+		} else if m.currentView == viewInProgress {
+			s.WriteString("  a: add  d: delete  x: mark complete\n")
+		} else if m.currentView == viewBacklog {
+			s.WriteString("  a: add  d: delete  r: move to in progress\n")
 		} else {
-			s.WriteString("  a: add  d: delete  x: mark complete  u: undo complete  r: move to in progress\n")
+			log.Fatalf("Invalid view: %v", m.currentView)
 		}
 		s.WriteString("  i: toggle description  I: toggle all descriptions  e: edit description  n: rename  q: quit\n\n")
 	}
