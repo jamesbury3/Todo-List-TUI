@@ -540,18 +540,6 @@ func (m *model) getCurrentList() []Todo {
 	}
 }
 
-// renderTextWithCursor inserts a cursor indicator at the specified position
-func renderTextWithCursor(text string, cursorPos int) string {
-	runes := []rune(text)
-	if cursorPos < 0 {
-		cursorPos = 0
-	}
-	if cursorPos > len(runes) {
-		cursorPos = len(runes)
-	}
-	return string(runes[:cursorPos]) + "│" + string(runes[cursorPos:])
-}
-
 // renderColoredTextWithCursor renders text with a colored cursor at the specified position
 func renderColoredTextWithCursor(text string, cursorPos int) string {
 	runes := []rune(text)
@@ -655,19 +643,6 @@ func (m *model) countCompletedToday() int {
 	}
 
 	return count
-}
-
-// truncateString truncates a string to maxLen, accounting for ANSI escape codes
-func truncateString(s string, maxLen int) string {
-	if maxLen <= 0 {
-		return ""
-	}
-	// Count visible runes (excluding ANSI codes)
-	runes := []rune(s)
-	if len(runes) <= maxLen {
-		return s
-	}
-	return string(runes[:maxLen-1]) + "…"
 }
 
 // wrapText wraps text to fit within maxWidth, breaking at word boundaries when possible
