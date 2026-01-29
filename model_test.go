@@ -1372,11 +1372,11 @@ func TestEditDescriptionNotInNavigationMode(t *testing.T) {
 	if len(m.backlog[0].Description) != 2 {
 		t.Errorf("Description count should be 2, got %d", len(m.backlog[0].Description))
 	}
-	if m.backlog[0].Description[0] != "existing" {
-		t.Errorf("Description[0] should be 'existing', got %q", m.backlog[0].Description[0])
+	if m.backlog[0].Description[0] != "new desc" {
+		t.Errorf("Description[0] should be 'new desc', got %q", m.backlog[0].Description[0])
 	}
-	if m.backlog[0].Description[1] != "new desc" {
-		t.Errorf("Description[1] should be 'new desc', got %q", m.backlog[0].Description[1])
+	if m.backlog[0].Description[1] != "existing" {
+		t.Errorf("Description[1] should be 'existing', got %q", m.backlog[0].Description[1])
 	}
 }
 

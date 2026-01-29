@@ -225,8 +225,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 								// Update existing description
 								m.backlog[m.cursor].Description[m.descriptionCursor] = trimmedDesc
 							} else {
-								// Append new description
-								m.backlog[m.cursor].Description = append(m.backlog[m.cursor].Description, trimmedDesc)
+								// Prepend new description
+								m.backlog[m.cursor].Description = append([]string{trimmedDesc}, m.backlog[m.cursor].Description...)
 							}
 							saveTodos(backlogFile, m.backlog)
 						case viewReady:
@@ -234,8 +234,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 								// Update existing description
 								m.ready[m.cursor].Description[m.descriptionCursor] = trimmedDesc
 							} else {
-								// Append new description
-								m.ready[m.cursor].Description = append(m.ready[m.cursor].Description, trimmedDesc)
+								// Prepend new description
+								m.ready[m.cursor].Description = append([]string{trimmedDesc}, m.ready[m.cursor].Description...)
 							}
 							saveTodos(readyFile, m.ready)
 						case viewCompleted:
@@ -244,8 +244,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 									// Update existing description
 									t.Description[m.descriptionCursor] = trimmedDesc
 								} else {
-									// Append new description
-									t.Description = append(t.Description, trimmedDesc)
+									// Prepend new description
+									t.Description = append([]string{trimmedDesc}, t.Description...)
 								}
 							})
 							saveTodos(completedFile, m.completed)
