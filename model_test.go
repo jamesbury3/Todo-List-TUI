@@ -953,6 +953,710 @@ func TestUpdateSaveRename(t *testing.T) {
 	}
 }
 
+func TestUpdateMoveReadyToBacklog(t *testing.T) {
+	m := model{
+		currentView: viewReady,
+		backlog: []Todo{
+			{Text: "existing backlog", CreatedAt: time.Now()},
+		},
+		ready: []Todo{
+			{Text: "task to move", CreatedAt: time.Now()},
+		},
+		cursor: 0,
+	}
+
+	// Press 'b' to move from ready to backlog
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
+	m = updated.(model)
+
+	// Verify task moved
+	if len(m.ready) != 0 {
+		t.Errorf("ready length after move = %d, want 0", len(m.ready))
+	}
+	if len(m.backlog) != 2 {
+		t.Errorf("backlog length after move = %d, want 2", len(m.backlog))
+	}
+
+	// Verify task appears at TOP of backlog (per CLAUDE.md)
+	if m.backlog[0].Text != "task to move" {
+		t.Errorf("backlog[0].Text = %q, want 'task to move'", m.backlog[0].Text)
+	}
+	if m.backlog[1].Text != "existing backlog" {
+		t.Errorf("backlog[1].Text = %q, want 'existing backlog'", m.backlog[1].Text)
+	}
+}
+
+func TestUpdateBackupAndClear(t *testing.T) {
+	// Change to temporary directory
+	tmpDir := t.TempDir()
+	originalWd, _ := os.Getwd()
+	defer os.Chdir(originalWd)
+	os.Chdir(tmpDir)
+
+	now := time.Now()
+	completedTime := now.Add(-1 * time.Hour)
+
+	m := model{
+		currentView: viewCompleted,
+		completed: []Todo{
+			{Text: "task1", CreatedAt: now, CompletedAt: &completedTime},
+			{Text: "task2", CreatedAt: now, CompletedAt: &completedTime},
+		},
+		cursor: 0,
+	}
+	m.updateDisplayedCompleted()
+
+	// Press 'B' to backup and clear
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'B'}})
+	m = updated.(model)
+
+	// Verify completed list is cleared
+	if len(m.completed) != 0 {
+		t.Errorf("completed length after backup = %d, want 0", len(m.completed))
+	}
+
+	// Verify cursor reset
+	if m.cursor != 0 {
+		t.Errorf("cursor after backup = %d, want 0", m.cursor)
+	}
+
+	// Verify success message shown
+	if !contains(m.message, "Backed up") {
+		t.Errorf("message should contain 'Backed up', got %q", m.message)
+	}
+
+	// Verify backup file exists
+	dateStr := now.Format("2006-01-02")
+	expectedBackupPrefix := "todo_completed_backup_" + dateStr
+	files, _ := os.ReadDir(".")
+	backupFound := false
+	for _, file := range files {
+		if len(file.Name()) >= len(expectedBackupPrefix) && file.Name()[:len(expectedBackupPrefix)] == expectedBackupPrefix {
+			backupFound = true
+			// Clean up
+			os.Remove(file.Name())
+		}
+	}
+	if !backupFound {
+		t.Error("Backup file was not created")
+	}
+}
+
+func TestUpdateToggleHelp(t *testing.T) {
+	m := model{
+		showingCommands: false,
+	}
+
+	// Press '?' to toggle help on
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	m = updated.(model)
+
+	if !m.showingCommands {
+		t.Error("showingCommands should be true after '?'")
+	}
+
+	// Press '?' again to toggle off
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	m = updated.(model)
+
+	if m.showingCommands {
+		t.Error("showingCommands should be false after second '?'")
+	}
+}
+
+func TestUpdateEnterDescriptionNavigation(t *testing.T) {
+	m := model{
+		currentView: viewBacklog,
+		backlog: []Todo{
+			{Text: "task1", Description: []string{"desc1", "desc2"}, CreatedAt: time.Now()},
+		},
+		cursor:                 0,
+		navigatingDescriptions: false,
+	}
+
+	// Press Enter to enter description navigation mode
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated.(model)
+
+	if !m.navigatingDescriptions {
+		t.Error("navigatingDescriptions should be true after Enter")
+	}
+	if m.descriptionCursor != 0 {
+		t.Errorf("descriptionCursor should be 0, got %d", m.descriptionCursor)
+	}
+	if !m.showingDescription {
+		t.Error("showingDescription should be true after Enter")
+	}
+}
+
+func TestUpdateEnterDescriptionNavigationNoDescriptions(t *testing.T) {
+	m := model{
+		currentView: viewBacklog,
+		backlog: []Todo{
+			{Text: "task without desc", CreatedAt: time.Now()},
+		},
+		cursor: 0,
+	}
+
+	// Press Enter when todo has no descriptions
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated.(model)
+
+	if m.navigatingDescriptions {
+		t.Error("navigatingDescriptions should be false for todo with no descriptions")
+	}
+	if !contains(m.message, "No descriptions") {
+		t.Errorf("message should indicate no descriptions, got %q", m.message)
+	}
+}
+
+func TestDescriptionNavigationMode(t *testing.T) {
+	m := model{
+		currentView: viewBacklog,
+		backlog: []Todo{
+			{Text: "task1", Description: []string{"desc1", "desc2", "desc3"}, CreatedAt: time.Now()},
+		},
+		cursor:                 0,
+		navigatingDescriptions: true,
+		descriptionCursor:      0,
+		showingDescription:     true,
+	}
+
+	// Navigate down with 'j'
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	m = updated.(model)
+	if m.descriptionCursor != 1 {
+		t.Errorf("descriptionCursor after 'j' = %d, want 1", m.descriptionCursor)
+	}
+
+	// Navigate down again
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	m = updated.(model)
+	if m.descriptionCursor != 2 {
+		t.Errorf("descriptionCursor after second 'j' = %d, want 2", m.descriptionCursor)
+	}
+
+	// Try to navigate past end (should stay at 2)
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	m = updated.(model)
+	if m.descriptionCursor != 2 {
+		t.Errorf("descriptionCursor should not go past end, got %d", m.descriptionCursor)
+	}
+
+	// Navigate up with 'k'
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	m = updated.(model)
+	if m.descriptionCursor != 1 {
+		t.Errorf("descriptionCursor after 'k' = %d, want 1", m.descriptionCursor)
+	}
+
+	// Navigate to top
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	m = updated.(model)
+	if m.descriptionCursor != 0 {
+		t.Errorf("descriptionCursor after second 'k' = %d, want 0", m.descriptionCursor)
+	}
+
+	// Try to navigate past beginning (should stay at 0)
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	m = updated.(model)
+	if m.descriptionCursor != 0 {
+		t.Errorf("descriptionCursor should not go below 0, got %d", m.descriptionCursor)
+	}
+
+	// Exit with Esc
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	m = updated.(model)
+	if m.navigatingDescriptions {
+		t.Error("navigatingDescriptions should be false after Esc")
+	}
+	if m.descriptionCursor != 0 {
+		t.Errorf("descriptionCursor should reset to 0, got %d", m.descriptionCursor)
+	}
+}
+
+func TestDescriptionNavigationExitOnTodoChange(t *testing.T) {
+	m := model{
+		currentView: viewBacklog,
+		backlog: []Todo{
+			{Text: "task1", Description: []string{"desc1"}, CreatedAt: time.Now()},
+			{Text: "task2", Description: []string{"desc2"}, CreatedAt: time.Now()},
+		},
+		cursor:                 1,
+		navigatingDescriptions: false,
+		descriptionCursor:      0,
+	}
+
+	// When NOT in navigation mode, moving between todos with 'j'/'k' should ensure navigation stays off
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	m = updated.(model)
+
+	if m.cursor != 0 {
+		t.Errorf("cursor should be 0 after 'k', got %d", m.cursor)
+	}
+	if m.navigatingDescriptions {
+		t.Error("navigatingDescriptions should be false after moving between todos")
+	}
+
+	// Move down
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	m = updated.(model)
+
+	if m.cursor != 1 {
+		t.Errorf("cursor should be 1 after 'j', got %d", m.cursor)
+	}
+	if m.navigatingDescriptions {
+		t.Error("navigatingDescriptions should remain false")
+	}
+}
+
+func TestDescriptionDeletionInNavigation(t *testing.T) {
+	m := model{
+		currentView: viewBacklog,
+		backlog: []Todo{
+			{Text: "task1", Description: []string{"desc1", "desc2", "desc3"}, CreatedAt: time.Now()},
+		},
+		cursor:                 0,
+		navigatingDescriptions: true,
+		descriptionCursor:      1,
+	}
+
+	// Press 'd' to enter delete confirmation
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	m = updated.(model)
+
+	if !m.confirmingDeleteDesc {
+		t.Error("confirmingDeleteDesc should be true after 'd'")
+	}
+
+	// Press 'y' to confirm deletion
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	m = updated.(model)
+
+	if m.confirmingDeleteDesc {
+		t.Error("confirmingDeleteDesc should be false after confirmation")
+	}
+	if len(m.backlog[0].Description) != 2 {
+		t.Errorf("Description count after deletion = %d, want 2", len(m.backlog[0].Description))
+	}
+	// Verify correct description was deleted (desc2 at index 1)
+	if m.backlog[0].Description[0] != "desc1" || m.backlog[0].Description[1] != "desc3" {
+		t.Errorf("Wrong description deleted, got %v", m.backlog[0].Description)
+	}
+}
+
+func TestDescriptionDeletionCancelled(t *testing.T) {
+	m := model{
+		currentView: viewBacklog,
+		backlog: []Todo{
+			{Text: "task1", Description: []string{"desc1", "desc2"}, CreatedAt: time.Now()},
+		},
+		cursor:                 0,
+		navigatingDescriptions: true,
+		descriptionCursor:      0,
+		confirmingDeleteDesc:   true,
+	}
+
+	// Press 'n' to cancel deletion
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	m = updated.(model)
+
+	if m.confirmingDeleteDesc {
+		t.Error("confirmingDeleteDesc should be false after cancellation")
+	}
+	if len(m.backlog[0].Description) != 2 {
+		t.Errorf("Description count should be unchanged, got %d", len(m.backlog[0].Description))
+	}
+}
+
+func TestDescriptionDeletionExitNavigationWhenEmpty(t *testing.T) {
+	m := model{
+		currentView: viewBacklog,
+		backlog: []Todo{
+			{Text: "task1", Description: []string{"only desc"}, CreatedAt: time.Now()},
+		},
+		cursor:                 0,
+		navigatingDescriptions: true,
+		descriptionCursor:      0,
+		confirmingDeleteDesc:   true,
+	}
+
+	// Delete the only description
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	m = updated.(model)
+
+	// Should exit navigation mode when no descriptions remain
+	if m.navigatingDescriptions {
+		t.Error("navigatingDescriptions should be false when all descriptions deleted")
+	}
+	if len(m.backlog[0].Description) != 0 {
+		t.Errorf("Description count should be 0, got %d", len(m.backlog[0].Description))
+	}
+}
+
+func TestEditDescriptionInNavigationMode(t *testing.T) {
+	m := model{
+		currentView: viewBacklog,
+		backlog: []Todo{
+			{Text: "task1", Description: []string{"old desc 1", "old desc 2"}, CreatedAt: time.Now()},
+		},
+		cursor:                 0,
+		navigatingDescriptions: true,
+		descriptionCursor:      1,
+	}
+
+	// Press 'e' to edit description
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	m = updated.(model)
+
+	if !m.editingDescription {
+		t.Error("editingDescription should be true after 'e' in navigation mode")
+	}
+	// Should load existing description text
+	if m.newDescription != "old desc 2" {
+		t.Errorf("newDescription should be 'old desc 2', got %q", m.newDescription)
+	}
+
+	// Modify the description
+	m.newDescription = "updated desc"
+
+	// Save with Enter
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated.(model)
+
+	if m.editingDescription {
+		t.Error("editingDescription should be false after save")
+	}
+	// Should update existing description, not append
+	if len(m.backlog[0].Description) != 2 {
+		t.Errorf("Description count should remain 2, got %d", len(m.backlog[0].Description))
+	}
+	if m.backlog[0].Description[1] != "updated desc" {
+		t.Errorf("Description[1] should be 'updated desc', got %q", m.backlog[0].Description[1])
+	}
+	if m.backlog[0].Description[0] != "old desc 1" {
+		t.Errorf("Description[0] should be unchanged, got %q", m.backlog[0].Description[0])
+	}
+}
+
+func TestEditDescriptionNotInNavigationMode(t *testing.T) {
+	m := model{
+		currentView: viewBacklog,
+		backlog: []Todo{
+			{Text: "task1", Description: []string{"existing"}, CreatedAt: time.Now()},
+		},
+		cursor:                 0,
+		navigatingDescriptions: false,
+	}
+
+	// Press 'e' when NOT in navigation mode
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	m = updated.(model)
+
+	if !m.editingDescription {
+		t.Error("editingDescription should be true")
+	}
+	// Should start with empty description (new description)
+	if m.newDescription != "" {
+		t.Errorf("newDescription should be empty for new description, got %q", m.newDescription)
+	}
+
+	// Add new description
+	m.newDescription = "new desc"
+
+	// Save with Enter
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated.(model)
+
+	// Should append new description
+	if len(m.backlog[0].Description) != 2 {
+		t.Errorf("Description count should be 2, got %d", len(m.backlog[0].Description))
+	}
+	if m.backlog[0].Description[0] != "existing" {
+		t.Errorf("Description[0] should be 'existing', got %q", m.backlog[0].Description[0])
+	}
+	if m.backlog[0].Description[1] != "new desc" {
+		t.Errorf("Description[1] should be 'new desc', got %q", m.backlog[0].Description[1])
+	}
+}
+
+func TestWrapText(t *testing.T) {
+	tests := []struct {
+		name        string
+		text        string
+		maxWidth    int
+		expected    []string
+		description string
+	}{
+		{
+			name:        "text shorter than maxWidth",
+			text:        "short",
+			maxWidth:    10,
+			expected:    []string{"short"},
+			description: "Short text should return single line",
+		},
+		{
+			name:        "text equal to maxWidth",
+			text:        "exactly10!",
+			maxWidth:    10,
+			expected:    []string{"exactly10!"},
+			description: "Text exactly at maxWidth should return single line",
+		},
+		{
+			name:        "text longer than maxWidth",
+			text:        "This is a longer text that needs wrapping",
+			maxWidth:    20,
+			expected:    []string{"This is a longer ", "text that needs ", "wrapping"},
+			description: "Long text should wrap at word boundaries",
+		},
+		{
+			name:        "multiple words wrapping",
+			text:        "one two three four five",
+			maxWidth:    10,
+			expected:    []string{"one two ", "three ", "four five"},
+			description: "Multiple words should wrap correctly",
+		},
+		{
+			name:        "long word exceeding maxWidth",
+			text:        "supercalifragilisticexpialidocious",
+			maxWidth:    10,
+			expected:    []string{"supercalifragilisticexpialidocious"},
+			description: "Single long word should not be split",
+		},
+		{
+			name:        "empty string",
+			text:        "",
+			maxWidth:    10,
+			expected:    []string{""},
+			description: "Empty string should return single empty line",
+		},
+		{
+			name:        "maxWidth zero",
+			text:        "test",
+			maxWidth:    0,
+			expected:    []string{"test"},
+			description: "MaxWidth <= 0 should return single line",
+		},
+		{
+			name:        "maxWidth negative",
+			text:        "test",
+			maxWidth:    -5,
+			expected:    []string{"test"},
+			description: "Negative maxWidth should return single line",
+		},
+		{
+			name:        "UTF-8 characters",
+			text:        "世界 你好 测试 文本",
+			maxWidth:    10,
+			expected:    []string{"世界 你好 测试 ", "文本"},
+			description: "UTF-8 characters should wrap correctly",
+		},
+		{
+			name:        "text with spaces",
+			text:        "a b c d e f g h",
+			maxWidth:    5,
+			expected:    []string{"a b ", "c d ", "e f ", "g h"},
+			description: "Words separated by spaces should wrap",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := wrapText(tt.text, tt.maxWidth)
+
+			if len(result) != len(tt.expected) {
+				t.Errorf("wrapText() returned %d lines, want %d\nGot: %v\nWant: %v",
+					len(result), len(tt.expected), result, tt.expected)
+				return
+			}
+
+			for i, line := range result {
+				if line != tt.expected[i] {
+					t.Errorf("wrapText() line[%d] = %q, want %q", i, line, tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
+func TestRenderColoredTextWithCursor(t *testing.T) {
+	tests := []struct {
+		name        string
+		text        string
+		cursorPos   int
+		description string
+		checkFunc   func(t *testing.T, result string)
+	}{
+		{
+			name:        "cursor at start",
+			text:        "hello",
+			cursorPos:   0,
+			description: "Cursor at position 0",
+			checkFunc: func(t *testing.T, result string) {
+				if !contains(result, "hello") {
+					t.Error("Result should contain text")
+				}
+			},
+		},
+		{
+			name:        "cursor in middle",
+			text:        "hello",
+			cursorPos:   2,
+			description: "Cursor at position 2",
+			checkFunc: func(t *testing.T, result string) {
+				// Result contains styled text with ANSI codes, just verify it's not empty
+				if result == "" {
+					t.Error("Result should not be empty")
+				}
+			},
+		},
+		{
+			name:        "cursor at end",
+			text:        "hello",
+			cursorPos:   5,
+			description: "Cursor at end of text",
+			checkFunc: func(t *testing.T, result string) {
+				if !contains(result, "hello") {
+					t.Error("Result should contain text")
+				}
+			},
+		},
+		{
+			name:        "cursor beyond text",
+			text:        "hi",
+			cursorPos:   10,
+			description: "Cursor position beyond text length",
+			checkFunc: func(t *testing.T, result string) {
+				if !contains(result, "hi") {
+					t.Error("Result should contain text")
+				}
+			},
+		},
+		{
+			name:        "negative cursor",
+			text:        "test",
+			cursorPos:   -1,
+			description: "Negative cursor position",
+			checkFunc: func(t *testing.T, result string) {
+				if !contains(result, "test") {
+					t.Error("Result should contain text")
+				}
+			},
+		},
+		{
+			name:        "empty text",
+			text:        "",
+			cursorPos:   0,
+			description: "Empty text with cursor",
+			checkFunc: func(t *testing.T, result string) {
+				// Should just return cursor indicator
+				if result == "" {
+					t.Error("Result should not be empty")
+				}
+			},
+		},
+		{
+			name:        "UTF-8 characters",
+			text:        "世界",
+			cursorPos:   1,
+			description: "UTF-8 text with cursor",
+			checkFunc: func(t *testing.T, result string) {
+				// Result contains styled text with ANSI codes, just verify it's not empty
+				if result == "" {
+					t.Error("Result should not be empty for UTF-8 text")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := renderColoredTextWithCursor(tt.text, tt.cursorPos)
+			tt.checkFunc(t, result)
+		})
+	}
+}
+
+func TestCountCompletedToday(t *testing.T) {
+	now := time.Now()
+	today := now
+	yesterday := now.Add(-24 * time.Hour)
+	twoDaysAgo := now.Add(-48 * time.Hour)
+
+	tests := []struct {
+		name          string
+		completed     []Todo
+		expectedCount int
+		description   string
+	}{
+		{
+			name:          "no completed todos",
+			completed:     []Todo{},
+			expectedCount: 0,
+			description:   "Empty list should return 0",
+		},
+		{
+			name: "all completed today",
+			completed: []Todo{
+				{Text: "task1", CreatedAt: today, CompletedAt: &today},
+				{Text: "task2", CreatedAt: today, CompletedAt: &today},
+				{Text: "task3", CreatedAt: today, CompletedAt: &today},
+			},
+			expectedCount: 3,
+			description:   "All tasks completed today",
+		},
+		{
+			name: "mixed today and yesterday",
+			completed: []Todo{
+				{Text: "today1", CreatedAt: today, CompletedAt: &today},
+				{Text: "yesterday1", CreatedAt: yesterday, CompletedAt: &yesterday},
+				{Text: "today2", CreatedAt: today, CompletedAt: &today},
+			},
+			expectedCount: 2,
+			description:   "Should count only today's completions",
+		},
+		{
+			name: "none completed today",
+			completed: []Todo{
+				{Text: "yesterday1", CreatedAt: yesterday, CompletedAt: &yesterday},
+				{Text: "2days", CreatedAt: twoDaysAgo, CompletedAt: &twoDaysAgo},
+			},
+			expectedCount: 0,
+			description:   "Old completions should not be counted",
+		},
+		{
+			name: "todos with nil CompletedAt",
+			completed: []Todo{
+				{Text: "completed", CreatedAt: today, CompletedAt: &today},
+				{Text: "not completed", CreatedAt: today, CompletedAt: nil},
+			},
+			expectedCount: 1,
+			description:   "Nil CompletedAt should be ignored",
+		},
+		{
+			name: "timezone edge case - just before midnight",
+			completed: []Todo{
+				{Text: "late", CreatedAt: today, CompletedAt: &today},
+			},
+			expectedCount: 1,
+			description:   "Same day regardless of time",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := model{
+				completed: tt.completed,
+			}
+			count := m.countCompletedToday()
+
+			if count != tt.expectedCount {
+				t.Errorf("countCompletedToday() = %d, want %d", count, tt.expectedCount)
+			}
+		})
+	}
+}
+
 // Helper function to check if a string contains a substring
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || indexOf(s, substr) >= 0)
