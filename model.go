@@ -679,6 +679,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "?":
 			m.showingCommands = !m.showingCommands
 			m.message = ""
+
+		case "g":
+			// Go to top
+			m.cursor = 0
+			m.message = ""
+			m.showingDescription = false
+			m.navigatingDescriptions = false
+			m.descriptionCursor = 0
+
+		case "G":
+			// Go to bottom
+			currentList := m.getCurrentList()
+			if len(currentList) > 0 {
+				m.cursor = len(currentList) - 1
+				m.message = ""
+				m.showingDescription = false
+				m.navigatingDescriptions = false
+				m.descriptionCursor = 0
+			}
 		}
 	}
 
@@ -994,7 +1013,7 @@ func (m model) View() string {
 		s.WriteString("  " + errorMessageStyle.Render("Are you sure you want to delete this description? (y/n)") + "\n\n")
 	} else if m.showingCommands {
 		s.WriteString("  " + headerStyle.Render("Commands:") + "\n")
-		s.WriteString("  " + commandStyle.Render("j/k: move down/up  J/K: reorder (backlog/ready)  h/l: switch views") + "\n")
+		s.WriteString("  " + commandStyle.Render("j/k: move down/up  g/G: go to top/bottom  J/K: reorder (backlog/ready)  h/l: switch views") + "\n")
 		if m.currentView == viewCompleted {
 			s.WriteString("  " + commandStyle.Render("d: delete  u: undo complete  B: backup and clear completed") + "\n")
 		} else if m.currentView == viewReady {
