@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -97,4 +98,55 @@ func loadAllCompletedTodos() []Todo {
 	}
 
 	return allTodos
+}
+
+// createBackups creates the backup directory and backs up all three todo files
+func createBackups() error {
+	// Create backup directory if it doesn't exist
+	backupDir := "backup"
+	if err := os.MkdirAll(backupDir, 0755); err != nil {
+		return err
+	}
+
+	// List of files to backup
+	files := []string{backlogFile, readyFile, completedFile}
+
+	// Copy each file to backup directory with .bak extension
+	for _, filename := range files {
+		// Skip if source file doesn't exist
+		if _, err := os.Stat(filename); os.IsNotExist(err) {
+			continue
+		}
+
+		// Open source file
+		src, err := os.Open(filename)
+		if err != nil {
+			return err
+		}
+
+		// Create destination file (overwrites if exists)
+		dstPath := filepath.Join(backupDir, filename+".bak")
+		dst, err := os.Create(dstPath)
+		if err != nil {
+			closeErr := src.Close()
+			if closeErr != nil {
+				return fmt.Errorf("error while closing backup file: %v while handling create error: %v",
+					closeErr, err)
+			}
+			return err
+		}
+
+		// Copy contents
+		_, err = io.Copy(dst, src)
+		err = src.Close()
+		if err != nil {
+			return fmt.Errorf("error while closing %s: %v", filename, err)
+		}
+		err = dst.Close()
+		if err != nil {
+			return fmt.Errorf("error while closing %s: %v", dstPath, err)
+		}
+	}
+
+	return nil
 }

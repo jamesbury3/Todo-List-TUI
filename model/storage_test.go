@@ -618,3 +618,160 @@ func TestLoadAllCompletedTodos(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateBackups(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalWd, _ := os.Getwd()
+	defer os.Chdir(originalWd)
+	os.Chdir(tmpDir)
+
+	now := time.Now()
+
+	tests := []struct {
+		name        string
+		setupFiles  map[string][]Todo
+		description string
+	}{
+		{
+			name:        "no existing files",
+			setupFiles:  map[string][]Todo{},
+			description: "Should create backup directory even with no files",
+		},
+		{
+			name: "all three files exist",
+			setupFiles: map[string][]Todo{
+				backlogFile: {
+					{Text: "Backlog task 1", CreatedAt: now},
+					{Text: "Backlog task 2", CreatedAt: now},
+				},
+				readyFile: {
+					{Text: "Ready task 1", CreatedAt: now},
+				},
+				completedFile: {
+					{Text: "Completed task 1", CreatedAt: now},
+				},
+			},
+			description: "Should backup all three files",
+		},
+		{
+			name: "partial files exist",
+			setupFiles: map[string][]Todo{
+				readyFile: {
+					{Text: "Ready task 1", CreatedAt: now},
+				},
+			},
+			description: "Should backup only existing files",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Clean directory
+			matches, _ := filepath.Glob("*")
+			for _, match := range matches {
+				os.RemoveAll(match)
+			}
+
+			// Create test files
+			for filename, todos := range tt.setupFiles {
+				err := saveTodos(filename, todos)
+				if err != nil {
+					t.Fatalf("Failed to create test file %q: %v", filename, err)
+				}
+			}
+
+			// Create backups
+			err := createBackups()
+			if err != nil {
+				t.Fatalf("createBackups() error = %v", err)
+			}
+
+			// Verify backup directory exists
+			if _, err := os.Stat("backup"); os.IsNotExist(err) {
+				t.Error("backup directory was not created")
+			}
+
+			// Verify backup files exist and match original content
+			for filename, originalTodos := range tt.setupFiles {
+				backupPath := filepath.Join("backup", filename+".bak")
+
+				// Check file exists
+				if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+					t.Errorf("backup file %q was not created", backupPath)
+					continue
+				}
+
+				// Load and verify content
+				backupTodos := loadTodos(backupPath)
+				if len(backupTodos) != len(originalTodos) {
+					t.Errorf("backup file %q has %d todos, want %d", backupPath, len(backupTodos), len(originalTodos))
+				}
+
+				for i, original := range originalTodos {
+					if i >= len(backupTodos) {
+						continue
+					}
+					if backupTodos[i].Text != original.Text {
+						t.Errorf("backup todo[%d].Text = %q, want %q", i, backupTodos[i].Text, original.Text)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestCreateBackupsOverwrite(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalWd, _ := os.Getwd()
+	defer os.Chdir(originalWd)
+	os.Chdir(tmpDir)
+
+	now := time.Now()
+
+	// Create initial file and backup
+	initialTodos := []Todo{
+		{Text: "Initial task", CreatedAt: now},
+	}
+	err := saveTodos(readyFile, initialTodos)
+	if err != nil {
+		t.Fatalf("Failed to create initial file: %v", err)
+	}
+
+	err = createBackups()
+	if err != nil {
+		t.Fatalf("First createBackups() error = %v", err)
+	}
+
+	// Modify the original file
+	updatedTodos := []Todo{
+		{Text: "Updated task 1", CreatedAt: now},
+		{Text: "Updated task 2", CreatedAt: now},
+	}
+	err = saveTodos(readyFile, updatedTodos)
+	if err != nil {
+		t.Fatalf("Failed to update file: %v", err)
+	}
+
+	// Create backups again (should overwrite)
+	err = createBackups()
+	if err != nil {
+		t.Fatalf("Second createBackups() error = %v", err)
+	}
+
+	// Verify backup has the updated content
+	backupPath := filepath.Join("backup", readyFile+".bak")
+	backupTodos := loadTodos(backupPath)
+
+	if len(backupTodos) != len(updatedTodos) {
+		t.Errorf("backup should have %d todos after overwrite, got %d", len(updatedTodos), len(backupTodos))
+	}
+
+	for i, updated := range updatedTodos {
+		if i >= len(backupTodos) {
+			continue
+		}
+		if backupTodos[i].Text != updated.Text {
+			t.Errorf("backup todo[%d].Text = %q, want %q (overwrite failed)", i, backupTodos[i].Text, updated.Text)
+		}
+	}
+}
