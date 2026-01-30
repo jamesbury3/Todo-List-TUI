@@ -2,7 +2,9 @@ package model
 
 import (
 	"fmt"
+	"os"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -212,4 +214,86 @@ func formatDayHeader(t time.Time) string {
 		return fmt.Sprintf("Yesterday (%s)", t.Format("Monday, Jan 2"))
 	}
 	return t.Format("Monday, Jan 2")
+}
+
+// generateMarkdownFromTodos creates markdown content from todos grouped by week and day
+func generateMarkdownFromTodos(todos []Todo, includeBackups bool) string {
+	var sb strings.Builder
+
+	// Header
+	title := "Completed Todos"
+	if includeBackups {
+		backupFiles, _ := findBackupFiles()
+		title = fmt.Sprintf("Completed Todos (including %d backup files)", len(backupFiles))
+	}
+	sb.WriteString(fmt.Sprintf("# %s\n\n", title))
+	sb.WriteString(fmt.Sprintf("Generated: %s\n\n", time.Now().Format("Monday, January 2, 2006 at 3:04 PM")))
+
+	if len(todos) == 0 {
+		sb.WriteString("No completed todos found.\n")
+		return sb.String()
+	}
+
+	// Summary
+	sb.WriteString(fmt.Sprintf("**Total completed todos:** %d\n\n", len(todos)))
+	sb.WriteString("---\n\n")
+
+	// Group todos by week
+	weeks := groupTodosByWeek(todos)
+
+	for _, week := range weeks {
+		// Week header
+		weekRange := formatWeekRange(week.WeekStart, week.WeekEnd)
+		todoCount := 0
+		for _, day := range week.Days {
+			todoCount += len(day.Todos)
+		}
+		sb.WriteString(fmt.Sprintf("## Week of %s\n\n", weekRange))
+		sb.WriteString(fmt.Sprintf("*%d todos completed this week*\n\n", todoCount))
+
+		// Days within the week
+		for _, day := range week.Days {
+			// Day header
+			dayHeader := formatDayHeader(day.Date)
+			sb.WriteString(fmt.Sprintf("### %s\n\n", dayHeader))
+
+			// Todos for this day
+			for _, todo := range day.Todos {
+				// Time of completion
+				timeStr := todo.CompletedAt.Format("3:04 PM")
+
+				// Todo item
+				sb.WriteString(fmt.Sprintf("- **%s** _%s_\n", todo.Text, timeStr))
+
+				// Descriptions
+				if len(todo.Description) > 0 {
+					for _, desc := range todo.Description {
+						sb.WriteString(fmt.Sprintf("  - %s\n", desc))
+					}
+				}
+			}
+
+			sb.WriteString("\n")
+		}
+	}
+
+	return sb.String()
+}
+
+// exportMarkdownFile creates a markdown file with completed todos
+func exportMarkdownFile(todos []Todo, includeBackups bool) (string, error) {
+	// Generate filename with timestamp
+	now := time.Now()
+	filename := fmt.Sprintf("completed_todos_%s.md", now.Format("2006-01-02_150405"))
+
+	// Generate markdown content
+	content := generateMarkdownFromTodos(todos, includeBackups)
+
+	// Write to file
+	err := os.WriteFile(filename, []byte(content), 0644)
+	if err != nil {
+		return "", err
+	}
+
+	return filename, nil
 }

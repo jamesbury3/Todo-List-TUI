@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -65,4 +66,35 @@ func backupCompletedTodos(todos []Todo) (string, error) {
 	}
 
 	return filename, nil
+}
+
+// findBackupFiles finds all backup completed todo files in the current directory
+func findBackupFiles() ([]string, error) {
+	pattern := "todo_completed_backup_*.txt"
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, err
+	}
+	return matches, nil
+}
+
+// loadAllCompletedTodos loads todos from the main completed file and all backup files
+func loadAllCompletedTodos() []Todo {
+	var allTodos []Todo
+
+	// Load main completed file
+	allTodos = append(allTodos, loadTodos(completedFile)...)
+
+	// Find and load all backup files
+	backupFiles, err := findBackupFiles()
+	if err != nil {
+		return allTodos
+	}
+
+	for _, backupFile := range backupFiles {
+		backupTodos := loadTodos(backupFile)
+		allTodos = append(allTodos, backupTodos...)
+	}
+
+	return allTodos
 }

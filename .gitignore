@@ -3,3 +3,4 @@ todo-list
 .idea/*
 coverage.out
 CLAUDE.md
+completed_todos_*.md

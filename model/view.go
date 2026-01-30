@@ -114,8 +114,8 @@ func wrapText(text string, maxWidth int) []string {
 	return lines
 }
 
-// renderPrettifyView renders all completed todos grouped by week and day
-func (m Model) renderPrettifyView() string {
+// renderPrettifyView renders completed todos grouped by week and day
+func (m Model) renderPrettifyView(todos []Todo, title string, exitKey string) string {
 	s := strings.Builder{}
 
 	// Calculate available width for content
@@ -126,16 +126,16 @@ func (m Model) renderPrettifyView() string {
 	maxTextWidth := availableWidth - 35
 
 	// Render header
-	s.WriteString("  " + activeTabStyle.Render("COMPLETED - PRETTIFIED VIEW") + "\n\n")
+	s.WriteString("  " + activeTabStyle.Render(title) + "\n\n")
 
-	if len(m.completed) == 0 {
+	if len(todos) == 0 {
 		s.WriteString("  " + infoMessageStyle.Render("No completed todos") + "\n\n")
-		s.WriteString("  " + helpTextStyle.Render("Press p to exit prettify view") + "\n\n")
+		s.WriteString("  " + helpTextStyle.Render(fmt.Sprintf("Press %s to exit prettify view", exitKey)) + "\n\n")
 		return s.String()
 	}
 
 	// Group todos by week
-	weeks := groupTodosByWeek(m.completed)
+	weeks := groupTodosByWeek(todos)
 
 	for _, week := range weeks {
 		// Week header
@@ -198,7 +198,7 @@ func (m Model) renderPrettifyView() string {
 		s.WriteString("\n")
 	}
 
-	s.WriteString("  " + helpTextStyle.Render("Press p to exit prettify view, q to quit") + "\n\n")
+	s.WriteString("  " + helpTextStyle.Render(fmt.Sprintf("Press %s to exit prettify view, q to quit", exitKey)) + "\n\n")
 
 	if m.message != "" {
 		msgStyle := infoMessageStyle
@@ -212,7 +212,7 @@ func (m Model) renderPrettifyView() string {
 func (m Model) View() string {
 	// Check if we're in prettify mode (only available in Completed view)
 	if m.currentView == viewCompleted && m.showingPrettify {
-		return m.renderPrettifyView()
+		return m.renderPrettifyView(m.completed, "COMPLETED - PRETTIFIED VIEW", "p")
 	}
 
 	s := strings.Builder{}
@@ -361,7 +361,7 @@ func (m Model) View() string {
 		s.WriteString("  " + headerStyle.Render("Commands:") + "\n")
 		s.WriteString("  " + commandStyle.Render("j/k: move down/up  g/G: go to top/bottom  J/K: reorder (backlog/ready)  h/l: switch views") + "\n")
 		if m.currentView == viewCompleted {
-			s.WriteString("  " + commandStyle.Render("d: delete  u: undo complete  p: prettify view  B: backup and clear completed") + "\n")
+			s.WriteString("  " + commandStyle.Render("d: delete  u: undo complete  p: prettify view  P: export markdown  B: backup and clear") + "\n")
 		} else if m.currentView == viewReady {
 			s.WriteString("  " + commandStyle.Render("a: add  d: delete  x: mark complete  b: move to backlog") + "\n")
 		} else if m.currentView == viewBacklog {

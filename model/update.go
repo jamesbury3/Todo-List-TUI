@@ -541,6 +541,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.navigatingDescriptions = false
 				m.descriptionCursor = 0
 			}
+
+		case "P":
+			// Export prettify view with backups to markdown file (only in Completed tab)
+			if m.currentView == viewCompleted {
+				allTodos := loadAllCompletedTodos()
+				filename, err := exportMarkdownFile(allTodos, true)
+				if err != nil {
+					m.message = fmt.Sprintf("Failed to export markdown: %s", err.Error())
+				} else {
+					m.message = fmt.Sprintf("Exported to %s!", filename)
+				}
+			}
 		}
 	}
 
