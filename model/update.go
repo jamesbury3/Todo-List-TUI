@@ -26,10 +26,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					if m.currentView == viewBacklog {
 						m.backlog = append(m.backlog, newTodo)
-						saveTodos(backlogFile, m.backlog)
+						if cmd := m.save(backlogFile, m.backlog); cmd != nil {
+							return m, cmd
+						}
 					} else {
 						m.ready = append(m.ready, newTodo)
-						saveTodos(readyFile, m.ready)
+						if cmd := m.save(readyFile, m.ready); cmd != nil {
+							return m, cmd
+						}
 					}
 					m.message = "Todo added!"
 				}
@@ -61,7 +65,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 								// Prepend new description
 								m.backlog[m.cursor].Description = append([]string{trimmedDesc}, m.backlog[m.cursor].Description...)
 							}
-							saveTodos(backlogFile, m.backlog)
+							if cmd := m.save(backlogFile, m.backlog); cmd != nil {
+								return m, cmd
+							}
 						case viewReady:
 							if m.navigatingDescriptions && m.descriptionCursor < len(m.ready[m.cursor].Description) {
 								// Update existing description
@@ -70,7 +76,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 								// Prepend new description
 								m.ready[m.cursor].Description = append([]string{trimmedDesc}, m.ready[m.cursor].Description...)
 							}
-							saveTodos(readyFile, m.ready)
+							if cmd := m.save(readyFile, m.ready); cmd != nil {
+								return m, cmd
+							}
 						case viewCompleted:
 							m.updateCompletedTodo(func(t *Todo) {
 								if m.navigatingDescriptions && m.descriptionCursor < len(t.Description) {
@@ -81,7 +89,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 									t.Description = append([]string{trimmedDesc}, t.Description...)
 								}
 							})
-							saveTodos(completedFile, m.completed)
+							if cmd := m.save(completedFile, m.completed); cmd != nil {
+								return m, cmd
+							}
 						}
 						m.message = "Description saved!"
 						m.showingDescription = true
@@ -109,15 +119,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						switch m.currentView {
 						case viewBacklog:
 							m.backlog[m.cursor].Text = capitalizedName
-							saveTodos(backlogFile, m.backlog)
+							if cmd := m.save(backlogFile, m.backlog); cmd != nil {
+								return m, cmd
+							}
 						case viewReady:
 							m.ready[m.cursor].Text = capitalizedName
-							saveTodos(readyFile, m.ready)
+							if cmd := m.save(readyFile, m.ready); cmd != nil {
+								return m, cmd
+							}
 						case viewCompleted:
 							m.updateCompletedTodo(func(t *Todo) {
 								t.Text = capitalizedName
 							})
-							saveTodos(completedFile, m.completed)
+							if cmd := m.save(completedFile, m.completed); cmd != nil {
+								return m, cmd
+							}
 						}
 						m.message = "Todo renamed!"
 					}
@@ -145,16 +161,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					case viewBacklog:
 						descriptions := m.backlog[m.cursor].Description
 						m.backlog[m.cursor].Description = append(descriptions[:m.descriptionCursor], descriptions[m.descriptionCursor+1:]...)
-						saveTodos(backlogFile, m.backlog)
+						if cmd := m.save(backlogFile, m.backlog); cmd != nil {
+							return m, cmd
+						}
 					case viewReady:
 						descriptions := m.ready[m.cursor].Description
 						m.ready[m.cursor].Description = append(descriptions[:m.descriptionCursor], descriptions[m.descriptionCursor+1:]...)
-						saveTodos(readyFile, m.ready)
+						if cmd := m.save(readyFile, m.ready); cmd != nil {
+							return m, cmd
+						}
 					case viewCompleted:
 						m.updateCompletedTodo(func(t *Todo) {
 							t.Description = append(t.Description[:m.descriptionCursor], t.Description[m.descriptionCursor+1:]...)
 						})
-						saveTodos(completedFile, m.completed)
+						if cmd := m.save(completedFile, m.completed); cmd != nil {
+							return m, cmd
+						}
 					}
 
 					// Adjust cursor if needed
@@ -192,7 +214,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if m.cursor >= len(m.backlog) && m.cursor > 0 {
 							m.cursor--
 						}
-						saveTodos(backlogFile, m.backlog)
+						if cmd := m.save(backlogFile, m.backlog); cmd != nil {
+							return m, cmd
+						}
 						m.message = "Todo deleted"
 					}
 				case viewReady:
@@ -201,7 +225,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if m.cursor >= len(m.ready) && m.cursor > 0 {
 							m.cursor--
 						}
-						saveTodos(readyFile, m.ready)
+						if cmd := m.save(readyFile, m.ready); cmd != nil {
+							return m, cmd
+						}
 						m.message = "Todo deleted"
 					}
 				case viewCompleted:
@@ -218,7 +244,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if m.cursor >= len(m.displayedCompleted) && m.cursor > 0 {
 							m.cursor--
 						}
-						saveTodos(completedFile, m.completed)
+						if cmd := m.save(completedFile, m.completed); cmd != nil {
+							return m, cmd
+						}
 						m.message = "Todo deleted"
 					}
 				}
@@ -318,22 +346,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "J":
 			if m.currentView == viewBacklog && len(m.backlog) > 0 && m.cursor < len(m.backlog)-1 {
-				swapTodos(m.backlog, m.cursor, m.cursor+1, backlogFile)
+				swapTodos(m.backlog, m.cursor, m.cursor+1)
+				if cmd := m.save(backlogFile, m.backlog); cmd != nil {
+					return m, cmd
+				}
 				m.cursor++
 				m.message = "Todo moved down"
 			} else if m.currentView == viewReady && len(m.ready) > 0 && m.cursor < len(m.ready)-1 {
-				swapTodos(m.ready, m.cursor, m.cursor+1, readyFile)
+				swapTodos(m.ready, m.cursor, m.cursor+1)
+				if cmd := m.save(readyFile, m.ready); cmd != nil {
+					return m, cmd
+				}
 				m.cursor++
 				m.message = "Todo moved down"
 			}
 
 		case "K":
 			if m.currentView == viewBacklog && len(m.backlog) > 0 && m.cursor > 0 {
-				swapTodos(m.backlog, m.cursor, m.cursor-1, backlogFile)
+				swapTodos(m.backlog, m.cursor, m.cursor-1)
+				if cmd := m.save(backlogFile, m.backlog); cmd != nil {
+					return m, cmd
+				}
 				m.cursor--
 				m.message = "Todo moved up"
 			} else if m.currentView == viewReady && len(m.ready) > 0 && m.cursor > 0 {
-				swapTodos(m.ready, m.cursor, m.cursor-1, readyFile)
+				swapTodos(m.ready, m.cursor, m.cursor-1)
+				if cmd := m.save(readyFile, m.ready); cmd != nil {
+					return m, cmd
+				}
 				m.cursor--
 				m.message = "Todo moved up"
 			}
@@ -345,7 +385,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.backlog = append(m.backlog[:m.cursor], m.backlog[m.cursor+1:]...)
 				m.backlog = append([]Todo{todo}, m.backlog...)
 				m.cursor = 0
-				saveTodos(backlogFile, m.backlog)
+				if cmd := m.save(backlogFile, m.backlog); cmd != nil {
+					return m, cmd
+				}
 				m.message = "Todo moved to top"
 			} else if m.currentView == viewReady && len(m.ready) > 0 && m.cursor > 0 {
 				// Move current todo to the top
@@ -353,7 +395,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ready = append(m.ready[:m.cursor], m.ready[m.cursor+1:]...)
 				m.ready = append([]Todo{todo}, m.ready...)
 				m.cursor = 0
-				saveTodos(readyFile, m.ready)
+				if cmd := m.save(readyFile, m.ready); cmd != nil {
+					return m, cmd
+				}
 				m.message = "Todo moved to top"
 			}
 
@@ -431,8 +475,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor >= len(m.ready) && m.cursor > 0 {
 					m.cursor--
 				}
-				saveTodos(readyFile, m.ready)
-				saveTodos(completedFile, m.completed)
+				if cmd := m.save(readyFile, m.ready); cmd != nil {
+					return m, cmd
+				}
+				if cmd := m.save(completedFile, m.completed); cmd != nil {
+					return m, cmd
+				}
 				m.message = "Todo completed!"
 			}
 
@@ -453,8 +501,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor >= len(m.displayedCompleted) && m.cursor > 0 {
 					m.cursor--
 				}
-				saveTodos(readyFile, m.ready)
-				saveTodos(completedFile, m.completed)
+				if cmd := m.save(readyFile, m.ready); cmd != nil {
+					return m, cmd
+				}
+				if cmd := m.save(completedFile, m.completed); cmd != nil {
+					return m, cmd
+				}
 				m.message = "Todo moved to ready!"
 			}
 
@@ -469,7 +521,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.completed = []Todo{}
 					m.updateDisplayedCompleted()
 					m.cursor = 0
-					saveTodos(completedFile, m.completed)
+					if cmd := m.save(completedFile, m.completed); cmd != nil {
+						return m, cmd
+					}
 					m.message = fmt.Sprintf("Backed up to %s and cleared completed todos!", backupFile)
 				}
 			}
@@ -482,8 +536,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor >= len(m.backlog) && m.cursor > 0 {
 					m.cursor--
 				}
-				saveTodos(backlogFile, m.backlog)
-				saveTodos(readyFile, m.ready)
+				if cmd := m.save(backlogFile, m.backlog); cmd != nil {
+					return m, cmd
+				}
+				if cmd := m.save(readyFile, m.ready); cmd != nil {
+					return m, cmd
+				}
 				m.message = "Todo moved to ready!"
 			}
 
@@ -495,8 +553,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor >= len(m.ready) && m.cursor > 0 {
 					m.cursor--
 				}
-				saveTodos(readyFile, m.ready)
-				saveTodos(backlogFile, m.backlog)
+				if cmd := m.save(readyFile, m.ready); cmd != nil {
+					return m, cmd
+				}
+				if cmd := m.save(backlogFile, m.backlog); cmd != nil {
+					return m, cmd
+				}
 				m.message = "Todo moved to backlog!"
 			}
 

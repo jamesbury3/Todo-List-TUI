@@ -13,8 +13,13 @@ func main() {
 		model.InitialModel(),
 		tea.WithAltScreen(), // Use alternate screen buffer to prevent scrolling
 	)
-	if _, err := p.Run(); err != nil {
-		fmt.Printf("Error: %v", err)
+	finalModel, err := p.Run()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	if m, ok := finalModel.(model.Model); ok && m.SaveError() != "" {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", m.SaveError())
 		os.Exit(1)
 	}
 }

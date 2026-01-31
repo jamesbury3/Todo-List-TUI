@@ -78,6 +78,7 @@ type Model struct {
 	descriptionCursor      int  // Which description is selected (0-indexed)
 	confirmingDeleteDesc   bool // True when confirming description deletion
 	showingPrettify        bool // True when in prettify view (Completed tab only)
+	saveError              string
 	message                string
 	textInputCursor        int // Cursor position within text input fields (for arrow key navigation)
 	width                  int // Terminal width

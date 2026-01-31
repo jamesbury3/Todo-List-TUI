@@ -171,14 +171,8 @@ func TestSwapTodos(t *testing.T) {
 		{Text: "task3", CreatedAt: now},
 	}
 
-	// Create a temporary file for testing
-	tmpfile := "/tmp/test_swap_todos.txt"
-	defer func() {
-		_ = os.Remove(tmpfile)
-	}()
-
 	// Swap first two items
-	swapTodos(todos, 0, 1, tmpfile)
+	swapTodos(todos, 0, 1)
 
 	if todos[0].Text != "task2" {
 		t.Errorf("todos[0].Text after swap = %q, want 'task2'", todos[0].Text)
@@ -186,14 +180,8 @@ func TestSwapTodos(t *testing.T) {
 	if todos[1].Text != "task1" {
 		t.Errorf("todos[1].Text after swap = %q, want 'task1'", todos[1].Text)
 	}
-
-	// Verify file was saved
-	loaded := loadTodos(tmpfile)
-	if len(loaded) != 3 {
-		t.Errorf("loaded todos length = %d, want 3", len(loaded))
-	}
-	if len(loaded) > 0 && loaded[0].Text != "task2" {
-		t.Errorf("loaded[0].Text = %q, want 'task2'", loaded[0].Text)
+	if todos[2].Text != "task3" {
+		t.Errorf("todos[2].Text after swap = %q, want 'task3'", todos[2].Text)
 	}
 }
 
@@ -664,5 +652,40 @@ func TestExportMarkdownFile(t *testing.T) {
 	}
 	if !strings.Contains(contentStr, "# Completed Todos") {
 		t.Error("Exported markdown does not contain header")
+	}
+}
+
+func TestSaveReturnsQuitOnError(t *testing.T) {
+	m := Model{}
+	todos := []Todo{{Text: "task1", CreatedAt: time.Now()}}
+
+	// Use a path that cannot be written to
+	cmd := m.save("/nonexistent_dir/file.txt", todos)
+	if cmd == nil {
+		t.Error("save() should return a command on error")
+	}
+	if m.SaveError() == "" {
+		t.Error("SaveError() should be set after failed save")
+	}
+	if !strings.Contains(m.SaveError(), "Failed to save") {
+		t.Errorf("SaveError() = %q, want to contain 'Failed to save'", m.SaveError())
+	}
+}
+
+func TestSaveReturnsNilOnSuccess(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalWd, _ := os.Getwd()
+	defer os.Chdir(originalWd)
+	os.Chdir(tmpDir)
+
+	m := Model{}
+	todos := []Todo{{Text: "task1", CreatedAt: time.Now()}}
+
+	cmd := m.save("test_todos.txt", todos)
+	if cmd != nil {
+		t.Error("save() should return nil on success")
+	}
+	if m.SaveError() != "" {
+		t.Errorf("SaveError() should be empty, got %q", m.SaveError())
 	}
 }

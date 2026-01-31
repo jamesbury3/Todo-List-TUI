@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // getCurrentList returns the list of todos for the current view
@@ -35,10 +37,23 @@ func (m *Model) updateCompletedTodo(updateFn func(*Todo)) {
 	m.updateDisplayedCompleted()
 }
 
-// swapTodos swaps two adjacent items in a list and saves
-func swapTodos(list []Todo, idx1, idx2 int, filename string) {
+// save wraps saveTodos and returns tea.Quit on failure
+func (m *Model) save(filename string, todos []Todo) tea.Cmd {
+	if err := saveTodos(filename, todos); err != nil {
+		m.saveError = fmt.Sprintf("Failed to save %s: %v", filename, err)
+		return tea.Quit
+	}
+	return nil
+}
+
+// SaveError returns the save error message, if any
+func (m Model) SaveError() string {
+	return m.saveError
+}
+
+// swapTodos swaps two adjacent items in a list
+func swapTodos(list []Todo, idx1, idx2 int) {
 	list[idx1], list[idx2] = list[idx2], list[idx1]
-	saveTodos(filename, list)
 }
 
 // updateDisplayedCompleted sorts and limits the completed list for display
