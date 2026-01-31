@@ -36,12 +36,14 @@ The todo list is split into 3 pages: Backlog, Ready, and Completed. Each of thes
 - `a` - Add new todo
 - `r` - Move to ready
 - `J`/`K` - Reorder todos
+- `t` - Move todo to top
 
 **Ready**
 - `a` - Add new todo
 - `b` - Move to backlog
 - `x` - Mark as complete
 - `J`/`K` - Reorder todos
+- `t` - Move todo to top
 
 **Completed**
 - `u` - Undo completion

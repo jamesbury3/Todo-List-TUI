@@ -359,7 +359,7 @@ func (m Model) View() string {
 		s.WriteString("  " + errorMessageStyle.Render("Are you sure you want to delete this description? (y/n)") + "\n\n")
 	} else if m.showingCommands {
 		s.WriteString("  " + headerStyle.Render("Commands:") + "\n")
-		s.WriteString("  " + commandStyle.Render("j/k: move down/up  g/G: go to top/bottom  J/K: reorder (backlog/ready)  h/l: switch views") + "\n")
+		s.WriteString("  " + commandStyle.Render("j/k: move down/up  g/G: go to top/bottom  J/K: reorder (backlog/ready)  t: move to top (backlog/ready)  h/l: switch views") + "\n")
 		if m.currentView == viewCompleted {
 			s.WriteString("  " + commandStyle.Render("d: delete  u: undo complete  p: prettify view  P: export markdown  B: backup and clear") + "\n")
 		} else if m.currentView == viewReady {

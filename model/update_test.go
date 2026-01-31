@@ -1063,3 +1063,133 @@ func TestEditDescriptionNotInNavigationMode(t *testing.T) {
 		t.Errorf("Description[1] should be 'existing', got %q", m.backlog[0].Description[1])
 	}
 }
+
+func TestUpdateMoveToTopBacklog(t *testing.T) {
+	m := Model{
+		currentView: viewBacklog,
+		backlog: []Todo{
+			{Text: "task1", CreatedAt: time.Now()},
+			{Text: "task2", CreatedAt: time.Now()},
+			{Text: "task3", CreatedAt: time.Now()},
+		},
+		cursor: 2,
+	}
+
+	// Press 't' to move task3 to top
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = updated.(Model)
+
+	if m.backlog[0].Text != "task3" {
+		t.Errorf("backlog[0].Text after move to top = %q, want 'task3'", m.backlog[0].Text)
+	}
+	if m.backlog[1].Text != "task1" {
+		t.Errorf("backlog[1].Text after move to top = %q, want 'task1'", m.backlog[1].Text)
+	}
+	if m.backlog[2].Text != "task2" {
+		t.Errorf("backlog[2].Text after move to top = %q, want 'task2'", m.backlog[2].Text)
+	}
+	if m.cursor != 0 {
+		t.Errorf("cursor after move to top = %d, want 0", m.cursor)
+	}
+	if m.message != "Todo moved to top" {
+		t.Errorf("message after move to top = %q, want 'Todo moved to top'", m.message)
+	}
+}
+
+func TestUpdateMoveToTopReady(t *testing.T) {
+	m := Model{
+		currentView: viewReady,
+		ready: []Todo{
+			{Text: "ready1", CreatedAt: time.Now()},
+			{Text: "ready2", CreatedAt: time.Now()},
+			{Text: "ready3", CreatedAt: time.Now()},
+		},
+		cursor: 1,
+	}
+
+	// Press 't' to move ready2 to top
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = updated.(Model)
+
+	if m.ready[0].Text != "ready2" {
+		t.Errorf("ready[0].Text after move to top = %q, want 'ready2'", m.ready[0].Text)
+	}
+	if m.ready[1].Text != "ready1" {
+		t.Errorf("ready[1].Text after move to top = %q, want 'ready1'", m.ready[1].Text)
+	}
+	if m.ready[2].Text != "ready3" {
+		t.Errorf("ready[2].Text after move to top = %q, want 'ready3'", m.ready[2].Text)
+	}
+	if m.cursor != 0 {
+		t.Errorf("cursor after move to top = %d, want 0", m.cursor)
+	}
+}
+
+func TestUpdateMoveToTopAlreadyAtTop(t *testing.T) {
+	m := Model{
+		currentView: viewBacklog,
+		backlog: []Todo{
+			{Text: "task1", CreatedAt: time.Now()},
+			{Text: "task2", CreatedAt: time.Now()},
+		},
+		cursor: 0,
+	}
+
+	// Press 't' when already at top (should not change anything)
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = updated.(Model)
+
+	// Order should remain unchanged
+	if m.backlog[0].Text != "task1" {
+		t.Errorf("backlog[0].Text should remain 'task1', got %q", m.backlog[0].Text)
+	}
+	if m.backlog[1].Text != "task2" {
+		t.Errorf("backlog[1].Text should remain 'task2', got %q", m.backlog[1].Text)
+	}
+	if m.cursor != 0 {
+		t.Errorf("cursor should remain 0, got %d", m.cursor)
+	}
+}
+
+func TestUpdateMoveToTopInCompletedView(t *testing.T) {
+	now := time.Now()
+	m := Model{
+		currentView: viewCompleted,
+		completed: []Todo{
+			{Text: "completed1", CreatedAt: now, CompletedAt: &now},
+			{Text: "completed2", CreatedAt: now, CompletedAt: &now},
+		},
+		cursor: 1,
+	}
+	m.updateDisplayedCompleted()
+
+	// Press 't' in completed view (should not do anything)
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = updated.(Model)
+
+	// Nothing should change
+	if m.cursor != 1 {
+		t.Errorf("cursor should remain 1 in completed view, got %d", m.cursor)
+	}
+}
+
+func TestUpdateMoveToTopSingleItem(t *testing.T) {
+	m := Model{
+		currentView: viewBacklog,
+		backlog: []Todo{
+			{Text: "only task", CreatedAt: time.Now()},
+		},
+		cursor: 0,
+	}
+
+	// Press 't' with only one item (should not change anything)
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = updated.(Model)
+
+	if len(m.backlog) != 1 {
+		t.Errorf("backlog length should remain 1, got %d", len(m.backlog))
+	}
+	if m.backlog[0].Text != "only task" {
+		t.Errorf("backlog[0].Text should remain 'only task', got %q", m.backlog[0].Text)
+	}
+}

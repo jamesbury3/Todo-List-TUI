@@ -338,6 +338,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.message = "Todo moved up"
 			}
 
+		case "t":
+			if m.currentView == viewBacklog && len(m.backlog) > 0 && m.cursor > 0 {
+				// Move current todo to the top
+				todo := m.backlog[m.cursor]
+				m.backlog = append(m.backlog[:m.cursor], m.backlog[m.cursor+1:]...)
+				m.backlog = append([]Todo{todo}, m.backlog...)
+				m.cursor = 0
+				saveTodos(backlogFile, m.backlog)
+				m.message = "Todo moved to top"
+			} else if m.currentView == viewReady && len(m.ready) > 0 && m.cursor > 0 {
+				// Move current todo to the top
+				todo := m.ready[m.cursor]
+				m.ready = append(m.ready[:m.cursor], m.ready[m.cursor+1:]...)
+				m.ready = append([]Todo{todo}, m.ready...)
+				m.cursor = 0
+				saveTodos(readyFile, m.ready)
+				m.message = "Todo moved to top"
+			}
+
 		case "h":
 			switch m.currentView {
 			case viewReady:
