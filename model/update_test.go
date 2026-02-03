@@ -151,10 +151,10 @@ func TestUpdateEditingDescriptionMode(t *testing.T) {
 	}
 
 	// Enter editing mode
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
 	m = updated.(Model)
 	if !m.editingDescription {
-		t.Error("editing mode not activated after 'e'")
+		t.Error("editing mode not activated after 'u'")
 	}
 
 	// Type some text
@@ -782,15 +782,15 @@ func TestUpdateEnterDescriptionNavigationNoDescriptions(t *testing.T) {
 		cursor: 0,
 	}
 
-	// Press Enter when todo has no descriptions
+	// Press Enter when todo has no updates
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated.(Model)
 
 	if m.navigatingDescriptions {
 		t.Error("navigatingDescriptions should be false for todo with no descriptions")
 	}
-	if !contains(m.message, "No descriptions") {
-		t.Errorf("message should indicate no descriptions, got %q", m.message)
+	if !contains(m.message, "No updates") {
+		t.Errorf("message should indicate no updates, got %q", m.message)
 	}
 }
 
@@ -989,12 +989,12 @@ func TestEditDescriptionInNavigationMode(t *testing.T) {
 		descriptionCursor:      1,
 	}
 
-	// Press 'e' to edit description
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	// Press 'n' to edit update
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	m = updated.(Model)
 
 	if !m.editingDescription {
-		t.Error("editingDescription should be true after 'e' in navigation mode")
+		t.Error("editingDescription should be true after 'n' in navigation mode")
 	}
 	// Should load existing description text
 	if m.newDescription != "old desc 2" {
@@ -1033,8 +1033,8 @@ func TestEditDescriptionNotInNavigationMode(t *testing.T) {
 		navigatingDescriptions: false,
 	}
 
-	// Press 'e' when NOT in navigation mode
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	// Press 'u' when NOT in navigation mode
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
 	m = updated.(Model)
 
 	if !m.editingDescription {

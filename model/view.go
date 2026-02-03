@@ -175,10 +175,10 @@ func (m Model) renderPrettifyView(todos []Todo, title string, exitKey string) st
 					}
 				}
 
-				// Always show all descriptions in prettify view
+				// Always show all updates in prettify view
 				if len(todo.Description) > 0 {
 					for _, desc := range todo.Description {
-						// Wrap description text
+						// Wrap update text
 						descLines := wrapText(desc, maxTextWidth-5)
 
 						for j, descLine := range descLines {
@@ -257,7 +257,7 @@ func (m Model) View() string {
 				cursor = cursorStyle.Render(">")
 			}
 
-			// Add description indicator
+			// Add update indicator
 			indicator := ""
 			if len(todo.Description) > 0 {
 				indicator = fmt.Sprintf(" 📄×%d", len(todo.Description))
@@ -298,10 +298,10 @@ func (m Model) View() string {
 				}
 			}
 
-			// Show descriptions if toggled and cursor is on this todo, or if showing all descriptions
+			// Show updates if toggled and cursor is on this todo, or if showing all updates
 			if len(todo.Description) > 0 && ((m.showingDescription && i == m.cursor) || m.showingAllDescriptions) {
 				for descIdx, desc := range todo.Description {
-					// Wrap description text
+					// Wrap update text
 					descLines := wrapText(desc, maxTextWidth-5)
 
 					// Add cursor indicator if in navigation mode
@@ -339,7 +339,7 @@ func (m Model) View() string {
 		// Wrap input text display if too wide
 		inputMaxWidth := maxTextWidth + 10
 		wrappedLines := renderWrappedTextWithCursor(m.newDescription, m.textInputCursor, inputMaxWidth)
-		s.WriteString("  " + promptStyle.Render("Edit description:") + " " + wrappedLines[0] + "\n")
+		s.WriteString("  " + promptStyle.Render("Edit update:") + " " + wrappedLines[0] + "\n")
 		for i := 1; i < len(wrappedLines); i++ {
 			s.WriteString("                   " + wrappedLines[i] + "\n")
 		}
@@ -356,7 +356,7 @@ func (m Model) View() string {
 	} else if m.confirmingDelete {
 		s.WriteString("  " + errorMessageStyle.Render("Are you sure you want to delete this todo? (y/n)") + "\n\n")
 	} else if m.confirmingDeleteDesc {
-		s.WriteString("  " + errorMessageStyle.Render("Are you sure you want to delete this description? (y/n)") + "\n\n")
+		s.WriteString("  " + errorMessageStyle.Render("Are you sure you want to delete this update? (y/n)") + "\n\n")
 	} else if m.showingCommands {
 		s.WriteString("  " + headerStyle.Render("Commands:") + "\n")
 		s.WriteString("  " + commandStyle.Render("j/k: move down/up  g/G: go to top/bottom  J/K: reorder (backlog/ready)  t: move to top (backlog/ready)  h/l: switch views") + "\n")
@@ -369,7 +369,7 @@ func (m Model) View() string {
 		} else {
 			log.Fatalf("Invalid view: %v", m.currentView)
 		}
-		s.WriteString("  " + commandStyle.Render("i: toggle description  I: toggle all descriptions  e: add description  enter: navigate descriptions  n: rename  ?: toggle help  q: quit") + "\n\n")
+		s.WriteString("  " + commandStyle.Render("i: toggle updates  I: toggle all updates  u: add update  enter: navigate updates  n: rename todo / edit update  ?: toggle help  q: quit") + "\n\n")
 	} else {
 		s.WriteString("  " + helpTextStyle.Render("Press ? for help") + "\n\n")
 	}

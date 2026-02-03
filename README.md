@@ -26,10 +26,10 @@ The todo list is split into 3 pages: Backlog, Ready, and Completed. Each of thes
 - `g`/`G` - Go to top/bottom of current list
 - `h`/`l` - Switch between views
 - `d` - Delete todo
-- `e` - Edit description
-- `n` - Rename todo
-- `i` - Toggle description
-- `I` - Toggle all descriptions
+- `u` - Add update
+- `n` - Rename todo / edit update
+- `i` - Toggle updates
+- `I` - Toggle all updates
 - `q` - Quit
 
 **Backlog**

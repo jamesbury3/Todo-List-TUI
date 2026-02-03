@@ -59,10 +59,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						switch m.currentView {
 						case viewBacklog:
 							if m.navigatingDescriptions && m.descriptionCursor < len(m.backlog[m.cursor].Description) {
-								// Update existing description
+								// Update existing update
 								m.backlog[m.cursor].Description[m.descriptionCursor] = trimmedDesc
 							} else {
-								// Prepend new description
+								// Prepend new update
 								m.backlog[m.cursor].Description = append([]string{trimmedDesc}, m.backlog[m.cursor].Description...)
 							}
 							if cmd := m.save(backlogFile, m.backlog); cmd != nil {
@@ -70,10 +70,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							}
 						case viewReady:
 							if m.navigatingDescriptions && m.descriptionCursor < len(m.ready[m.cursor].Description) {
-								// Update existing description
+								// Update existing update
 								m.ready[m.cursor].Description[m.descriptionCursor] = trimmedDesc
 							} else {
-								// Prepend new description
+								// Prepend new update
 								m.ready[m.cursor].Description = append([]string{trimmedDesc}, m.ready[m.cursor].Description...)
 							}
 							if cmd := m.save(readyFile, m.ready); cmd != nil {
@@ -82,10 +82,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						case viewCompleted:
 							m.updateCompletedTodo(func(t *Todo) {
 								if m.navigatingDescriptions && m.descriptionCursor < len(t.Description) {
-									// Update existing description
+									// Update existing update
 									t.Description[m.descriptionCursor] = trimmedDesc
 								} else {
-									// Prepend new description
+									// Prepend new update
 									t.Description = append([]string{trimmedDesc}, t.Description...)
 								}
 							})
@@ -93,7 +93,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 								return m, cmd
 							}
 						}
-						m.message = "Description saved!"
+						m.message = "Update saved!"
 						m.showingDescription = true
 					}
 				}
@@ -150,11 +150,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Handle description deletion confirmation (check this BEFORE navigatingDescriptions)
+		// Handle update deletion confirmation (check this BEFORE navigatingDescriptions)
 		if m.confirmingDeleteDesc {
 			switch msg.String() {
 			case "y":
-				// Delete the description
+				// Delete the update
 				currentList := m.getCurrentList()
 				if len(currentList) > 0 && m.cursor < len(currentList) {
 					switch m.currentView {
@@ -183,13 +183,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					currentList = m.getCurrentList()
 					todo := currentList[m.cursor]
 					if len(todo.Description) == 0 {
-						// No more descriptions, exit navigation mode
+						// No more updates, exit navigation mode
 						m.navigatingDescriptions = false
 					} else if m.descriptionCursor >= len(todo.Description) {
 						m.descriptionCursor = len(todo.Description) - 1
 					}
 
-					m.message = "Description deleted"
+					m.message = "Update deleted"
 				}
 				m.confirmingDeleteDesc = false
 				return m, nil
@@ -260,7 +260,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-		// Handle description navigation mode
+		// Handle update navigation mode
 		if m.navigatingDescriptions {
 			switch msg.String() {
 			case "j":
@@ -282,21 +282,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "d":
-				// Initiate description deletion
+				// Initiate update deletion
 				m.confirmingDeleteDesc = true
 				m.message = ""
 				return m, nil
 
 			case "esc", "q":
-				// Exit description navigation mode
+				// Exit update navigation mode
 				m.navigatingDescriptions = false
 				m.descriptionCursor = 0
 				m.message = ""
 				m.showingDescription = false
 				return m, nil
 
-			case "e":
-				// Edit selected description (handled in main 'e' case below)
+			case "n":
+				// Edit selected update (handled in main 'n' case below)
 
 			default:
 				// Ignore other keys in this mode
@@ -313,13 +313,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(currentList) > 0 && m.cursor < len(currentList) {
 				todo := currentList[m.cursor]
 				if len(todo.Description) > 0 {
-					// Enter description navigation mode
+					// Enter update navigation mode
 					m.navigatingDescriptions = true
 					m.descriptionCursor = 0
 					m.showingDescription = true
-					m.message = "Description navigation mode (j/k to navigate, e to edit, d to delete, esc to exit)"
+					m.message = "Update navigation mode (j/k to navigate, n to edit, d to delete, esc to exit)"
 				} else {
-					m.message = "No descriptions. Press 'e' to add one."
+					m.message = "No updates. Press 'u' to add one."
 				}
 			}
 
@@ -330,7 +330,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.message = ""
 			m.showingDescription = false
-			// Exit description navigation when moving between todos
+			// Exit update navigation when moving between todos
 			m.navigatingDescriptions = false
 			m.descriptionCursor = 0
 
@@ -340,7 +340,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.message = ""
 			m.showingDescription = false
-			// Exit description navigation when moving between todos
+			// Exit update navigation when moving between todos
 			m.navigatingDescriptions = false
 			m.descriptionCursor = 0
 
@@ -455,13 +455,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "n":
-			// Rename mode
 			currentList := m.getCurrentList()
 			if len(currentList) > 0 && m.cursor < len(currentList) {
-				m.renamingTodo = true
-				m.newTodoName = currentList[m.cursor].Text
-				m.textInputCursor = len([]rune(m.newTodoName))
-				m.message = ""
+				if m.navigatingDescriptions {
+					// Editing existing update
+					todo := currentList[m.cursor]
+					if m.descriptionCursor < len(todo.Description) {
+						m.editingDescription = true
+						m.newDescription = todo.Description[m.descriptionCursor]
+						m.textInputCursor = len([]rune(m.newDescription))
+						m.message = ""
+					}
+				} else {
+					// Rename mode
+					m.renamingTodo = true
+					m.newTodoName = currentList[m.cursor].Text
+					m.textInputCursor = len([]rune(m.newTodoName))
+					m.message = ""
+				}
 			}
 
 		case "x":
@@ -570,25 +581,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showingAllDescriptions = !m.showingAllDescriptions
 			m.message = ""
 
-		case "e":
+		case "u":
 			currentList := m.getCurrentList()
 			if len(currentList) > 0 && m.cursor < len(currentList) {
-				if m.navigatingDescriptions {
-					// Editing existing description
-					todo := currentList[m.cursor]
-					if m.descriptionCursor < len(todo.Description) {
-						m.editingDescription = true
-						m.newDescription = todo.Description[m.descriptionCursor]
-						m.textInputCursor = len([]rune(m.newDescription))
-						m.message = ""
-					}
-				} else {
-					// Always create NEW description
-					m.editingDescription = true
-					m.newDescription = ""
-					m.textInputCursor = 0
-					m.message = ""
-				}
+				// Always create NEW update
+				m.editingDescription = true
+				m.newDescription = ""
+				m.textInputCursor = 0
+				m.message = ""
 			}
 
 		case "?":
@@ -637,7 +637,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "esc":
-			// Universal untoggle: hide all descriptions and exit pretty view
+			// Universal untoggle: hide all updates and exit pretty view
 			if m.showingDescription || m.showingAllDescriptions || m.showingPrettify {
 				m.showingDescription = false
 				m.showingAllDescriptions = false
