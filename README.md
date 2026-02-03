@@ -4,7 +4,7 @@
 
 This is a terminal-based todo list application built for keyboard navigation with vim-like commands.
 
-<img width="747" height="247" alt="Screenshot 2026-01-28 at 7 10 19 AM" src="https://github.com/user-attachments/assets/2c54f931-3be5-40e1-8c5c-b2f1f3896c75" />
+<img width="610" height="214" alt="Screenshot 2026-02-02 213526" src="https://github.com/user-attachments/assets/c7dd0c93-3dce-4aeb-8432-680afb927061" />
 
 ### Installation
 
