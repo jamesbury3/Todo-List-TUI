@@ -298,6 +298,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "n":
 				// Edit selected update (handled in main 'n' case below)
 
+			case "u":
+				// Create a new update while navigating
+				m.navigatingDescriptions = false
+				m.descriptionCursor = 0
+				m.editingDescription = true
+				m.newDescription = ""
+				m.textInputCursor = 0
+				m.message = ""
+				return m, nil
+
 			default:
 				// Ignore other keys in this mode
 				return m, nil

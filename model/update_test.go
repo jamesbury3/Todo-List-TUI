@@ -859,6 +859,34 @@ func TestDescriptionNavigationMode(t *testing.T) {
 	}
 }
 
+func TestDescriptionNavigationCreateNewUpdate(t *testing.T) {
+	m := Model{
+		currentView: viewBacklog,
+		backlog: []Todo{
+			{Text: "task1", Description: []string{"desc1", "desc2"}, CreatedAt: time.Now()},
+		},
+		cursor:                 0,
+		navigatingDescriptions: true,
+		descriptionCursor:      1,
+	}
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+	m = updated.(Model)
+
+	if m.navigatingDescriptions {
+		t.Error("navigatingDescriptions should be false after 'u'")
+	}
+	if !m.editingDescription {
+		t.Error("editingDescription should be true after 'u'")
+	}
+	if m.descriptionCursor != 0 {
+		t.Errorf("descriptionCursor should reset to 0, got %d", m.descriptionCursor)
+	}
+	if m.newDescription != "" {
+		t.Errorf("newDescription should be empty, got %q", m.newDescription)
+	}
+}
+
 func TestDescriptionNavigationExitOnTodoChange(t *testing.T) {
 	m := Model{
 		currentView: viewBacklog,
